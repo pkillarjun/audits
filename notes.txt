@@ -1,0 +1,2 @@
+* Don't fuzz-test languages that have exception handlers;
+
