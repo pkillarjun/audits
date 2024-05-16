@@ -1,0 +1,30 @@
+* neo/tests/Neo.UnitTests/Network/P2P/Payloads/UT_Block.cs
+* neo/tests/Neo.UnitTests/Network/P2P/Payloads/UT_Header.cs
+* neo/tests/Neo.UnitTests/Network/P2P/Payloads/UT_Transaction.cs
+* neo/tests/Neo.UnitTests/SmartContract/Manifest/UT_ContractManifest.cs
+
+var uut_Header = new Header();
+uut_Header.Deserialize(ref reader);
+
+var uut_Transaction = new Transaction();
+((ISerializable)uut_Transaction).Deserialize(ref reader);
+Transaction tx2 = Neo.IO.Helper.AsSerializable<Transaction>(bytes);
+
+var manifest = ContractManifest.Parse(stream);
+
+catch (ArgumentException) { }
+#catch (BadScriptException) { }
+catch (FormatException) { }
+catch (InvalidOperationException) { }
+#catch (OverflowException) { }
+#catch (SocketException) { }
+
+
+(Exception ex)
+
+
+dotnet run -- findings/crashes/bug.raw
+pwsh ../sharpfuzz/scripts/fuzz.ps1 neo-fuzz.csproj -i neo-fuzz_seed/
+
+dotnet run -- findings/crashes/id\:000000\,sig\:02\,src\:000001\,op\:havoc\,rep\:32
+dotnet run -- findings/crashes/id\:000003\,sig\:02\,src\:000004+000024\,op\:splice\,rep\:4

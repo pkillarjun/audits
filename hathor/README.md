@@ -30,3 +30,7 @@ poetry run python tests/fuzz/fuzz_transaction.py tests/fuzz/fuzz_transaction_cor
 * After parser bugs.
 * Check for fuzz blocker.
 * Get the code coverage of fuzzers.
+
+## Bugs & Payout
+1   10000$
+

@@ -1,0 +1,27 @@
+Bounty:
+	https://immunefi.com/bounty/neo/
+
+Fuzzer:
+	https://github.com/Metalnem/sharpfuzz
+	https://github.com/Metalnem/libfuzzer-dotnet
+
+sharpfuzz-libFuzzer:
+	https://github.com/Metalnem/sharpfuzz-samples/tree/master/CoreFX
+	https://github.com/Metalnem/sharpfuzz-samples/tree/master/CoreCLR
+	https://github.com/Metalnem/sharpfuzz/blob/master/docs/libFuzzer.md
+
+sharpfuzz-afl:
+	https://github.com/Metalnem/sharpfuzz/blob/master/README.md
+	https://github.com/Metalnem/sharpfuzz-samples/tree/master/Bond
+	https://github.com/Metalnem/sharpfuzz-samples/tree/master/Markdig
+
+Docker:
+	docker image build -t sharpfuzz .
+	docker run -it --name neo-fuzz --entrypoint /bin/bash sharpfuzz
+	docker run -it --name neo-vm-fuzz --entrypoint /bin/bash sharpfuzz
+	docker run -it --name neo-vm-fuzz-rep --entrypoint /bin/bash sharpfuzz
+
+Fuzzer:
+	pwsh ../sharpfuzz/scripts/fuzz.ps1 neo-fuzz.csproj -i neo-fuzz_seed/
+	pwsh ../sharpfuzz/scripts/fuzz.ps1 neo-vm-fuzz.csproj -i neo-vm-fuzz_seed/
+	pwsh ../sharpfuzz/scripts/fuzz-libfuzzer.ps1 -libFuzzer libfuzzer-dotnet-ubuntu -project neo-vm-fuzz.csproj -corpus neo-vm-fuzz_seed

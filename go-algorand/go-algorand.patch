@@ -1,0 +1,281 @@
+diff --git a/Makefile b/Makefile
+index d17855e..66c75db 100644
+--- a/Makefile
++++ b/Makefile
+@@ -321,3 +321,21 @@ archive:
+ build_custom_linters:
+ 	cd $(SRCPATH)/cmd/partitiontest_linter/ && go build -buildmode=plugin -trimpath plugin/plugin.go && ls plugin.so
+ 	cd $(SRCPATH)
++
++
++fuzz:
++#@go test -fuzz=FuzzMessage -fuzztime=600s github.com/algorand/go-algorand/agreement
++#@go test -fuzz=FuzzPersistence -fuzztime=600s github.com/algorand/go-algorand/agreement
++#@go test -fuzz=FuzzFetcher -fuzztime=600s github.com/algorand/go-algorand/catchup
++#@go test -fuzz=FuzzTxDupCache -fuzztime=600s github.com/algorand/go-algorand/data
++#@go test -fuzz=FuzzCodec -fuzztime=600s github.com/algorand/go-algorand/protocol
++#@go test -fuzz=FuzzDisassemble -fuzztime=600s github.com/algorand/go-algorand/data/transactions/logic
++#@go test -fuzz=FuzzAssembleString -fuzztime=600s github.com/algorand/go-algorand/data/transactions/logic
++#@go test -fuzz=FuzzByteLiteral -fuzztime=600s github.com/algorand/go-algorand/data/transactions/logic
++#@go test -fuzz=FuzzEval -fuzztime=600s github.com/algorand/go-algorand/data/transactions/logic
++#@go test -fuzz=FuzzMessageOfInterest -fuzztime=600s github.com/algorand/go-algorand/network
++#@go test -fuzz=FuzzBloom -fuzztime=600s github.com/algorand/go-algorand/util/bloom
++
++#/home/oblivion/project/go-algorand/data/transactions/logic/ {func Test}
++#protocol.DecodeReflect
++#protocol.Decode
+diff --git a/agreement/message_test.go b/agreement/message_test.go
+index 3c3ab77..b135007 100644
+--- a/agreement/message_test.go
++++ b/agreement/message_test.go
+@@ -130,3 +130,12 @@ func TestMessageBackwardCompatibility(t *testing.T) {
+ 	require.Equal(t, m3, m4)
+ 	require.Equal(t, m3, targetMessage)
+ }
++
++func FuzzMessage(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++		decodeVote(orig)
++		decodeBundle(orig)
++		decodeProposal(orig)
++	})
++}
+diff --git a/agreement/persistence_test.go b/agreement/persistence_test.go
+index fbd9323..63459e7 100644
+--- a/agreement/persistence_test.go
++++ b/agreement/persistence_test.go
+@@ -287,3 +287,20 @@ func TestDecodeFailures(t *testing.T) {
+ 		require.ErrorContains(t, err, "UnexpectedRouterField")
+ 	}
+ }
++
++func FuzzPersistence(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++
++		timeset := timers.MakeMonotonicClock(time.Date(2000, 0, 0, 0, 0, 0, 0, time.UTC))
++		clock := timers.MakeMonotonicClock(time.Date(2015, 1, 2, 5, 6, 7, 8, time.UTC))
++
++		log := makeServiceLogger(logging.Base())
++
++		decode(orig, timeset, log, false)
++		decode(orig, timeset, log, true)
++
++		decode(orig, clock, log, false)
++		decode(orig, clock, log, true)
++	})
++}
+diff --git a/catchup/universalFetcher_test.go b/catchup/universalFetcher_test.go
+index 6107a69..372e002 100644
+--- a/catchup/universalFetcher_test.go
++++ b/catchup/universalFetcher_test.go
+@@ -312,3 +312,13 @@ func TestErrorTypes(t *testing.T) {
+ 	err6 := errHTTPResponseContentType{contentTypeCount: 1, contentType: "UNDEFINED"}
+ 	require.Equal(t, "HTTPFetcher.getBlockBytes: invalid content type: UNDEFINED", err6.Error())
+ }
++
++func FuzzFetcher(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++
++		processBlockBytes(orig, 22, "test")
++		processBlockBytes(orig, 20, "test")
++		processBlockBytes(orig, 22, "test")
++	})
++}
+diff --git a/data/transactions/logic/assembler_test.go b/data/transactions/logic/assembler_test.go
+index 665741e..938971b 100644
+--- a/data/transactions/logic/assembler_test.go
++++ b/data/transactions/logic/assembler_test.go
+@@ -3487,3 +3487,32 @@ warning 2
+ 	expected = "1 error: 42: super annoying error\n"
+ 	assertWithMsg(t, expected, b)
+ }
++
++func FuzzDisassemble(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++		if len(orig) < 20 {
++			return
++		}
++		Disassemble(orig)
++	})
++}
++
++func FuzzAssembleString(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig string) {
++		AssembleString(orig)
++	})
++}
++
++func FuzzByteLiteral(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++		ops := newOpStream(1)
++		ops.ByteLiteral(orig)
++	})
++}
++
++func TestDisassembleBug(t *testing.T) {
++	Disassemble([]byte("\x02000000000000000000A"))
++}
+diff --git a/data/transactions/logic/eval_test.go b/data/transactions/logic/eval_test.go
+index 5d5f321..958113c 100644
+--- a/data/transactions/logic/eval_test.go
++++ b/data/transactions/logic/eval_test.go
+@@ -3378,10 +3378,11 @@ intc_1
+ import random
+ 
+ def foo():
+-    for i in range(64):
+-        print('int {}'.format(random.randint(0,0x01ffffffffffffff)))
+-    for i in range(63):
+-        print('+')
++
++	for i in range(64):
++	    print('int {}'.format(random.randint(0,0x01ffffffffffffff)))
++	for i in range(63):
++	    print('+')
+ */
+ const addBenchmarkSource = `int 20472989571761113
+ int 80135167795737348
+@@ -3516,10 +3517,11 @@ int 28939890412103745
+ import random
+ 
+ def foo():
+-    print('int {}'.format(random.randint(0,0x01ffffffffffffff)))
+-    for i in range(63):
+-        print('int {}'.format(random.randint(0,0x01ffffffffffffff)))
+-        print('+')
++
++	print('int {}'.format(random.randint(0,0x01ffffffffffffff)))
++	for i in range(63):
++	    print('int {}'.format(random.randint(0,0x01ffffffffffffff)))
++	    print('+')
+ */
+ const addBenchmark2Source = `int 8371863094338737
+ int 29595196041051360
+@@ -6089,3 +6091,25 @@ pop
+ int 1
+ `, 8)
+ }
++
++func FuzzEval(f *testing.F) {
++
++	ep := defaultEvalParams()
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++
++		CheckContract(orig, ep)
++		EvalApp(orig, 0, 0, ep)
++
++		/*
++			ep := defaultEvalParams()
++			err := CheckContract(orig, ep)
++
++			if err != nil {
++				return
++			}
++
++			EvalApp(orig, 0, 0, ep)
++		*/
++	})
++}
+diff --git a/data/txDupCache_test.go b/data/txDupCache_test.go
+index 13a36b1..bf36037 100644
+--- a/data/txDupCache_test.go
++++ b/data/txDupCache_test.go
+@@ -371,3 +371,12 @@ func benchmarkDigestCache(b *testing.B, m cacheMaker, numThreads int) {
+ 	}
+ 	wg.Wait()
+ }
++
++func FuzzTxDupCache(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++		//get size of orig
++		cache := makeSaltedCache(len(orig))
++		cache.CheckAndPut(orig)
++	})
++}
+diff --git a/go.sum b/go.sum
+index 0bf3866..89a72c8 100644
+--- a/go.sum
++++ b/go.sum
+@@ -6,8 +6,8 @@ github.com/algorand/avm-abi v0.2.0/go.mod h1:+CgwM46dithy850bpTeHh9MC99zpn2Snirb
+ github.com/algorand/falcon v0.0.0-20220727072124-02a2a64c4414 h1:nwYN+GQ7Z5OOfZwqBO1ma7DSlP7S1YrKWICOyjkwqrc=
+ github.com/algorand/falcon v0.0.0-20220727072124-02a2a64c4414/go.mod h1:OkQyHlGvS0kLNcIWbC21/uQcnbfwSOQm+wiqWwBG9pQ=
+ github.com/algorand/go-codec v1.1.8/go.mod h1:XhzVs6VVyWMLu6cApb9/192gBjGRVGm5cX5j203Heg4=
+-github.com/algorand/go-codec/codec v1.1.8 h1:lsFuhcOH2LiEhpBH3BVUUkdevVmwCRyvb7FCAAPeY6U=
+-github.com/algorand/go-codec/codec v1.1.8/go.mod h1:tQ3zAJ6ijTps6V+wp8KsGDnPC2uhHVC7ANyrtkIY0bA=
++github.com/algorand/go-codec/codec v1.1.8 h1:RyokOQSEnNCxrngGqC5yrPNoQAGh5osBIKiaeKOe5fg=
++github.com/algorand/go-codec/codec v1.1.8/go.mod h1:YkEx5nmr/zuCeaDYOIhlDg92Lxju8tj2d2NrYqP7g7k=
+ github.com/algorand/go-deadlock v0.2.2 h1:L7AKATSUCzoeVuOgpTipfCEjdUu5ECmlje8R7lP9DOY=
+ github.com/algorand/go-deadlock v0.2.2/go.mod h1:Hat1OXKqKNUcN/iv74FjGhF4hsOE2l7gOgQ9ZVIq6Fk=
+ github.com/algorand/go-sumhash v0.1.0 h1:b/QRhyLuF//vOcicBIxBXYW8bERNoeLxieht/dUYpVg=
+diff --git a/network/wsNetwork_test.go b/network/wsNetwork_test.go
+index 4f7d01c..bdb2000 100644
+--- a/network/wsNetwork_test.go
++++ b/network/wsNetwork_test.go
+@@ -3757,3 +3757,10 @@ func TestWebsocketNetworkTelemetryTCP(t *testing.T) {
+ 	t.Log("closed detailsA", string(pcdA))
+ 	t.Log("closed detailsB", string(pcdB))
+ }
++
++func FuzzMessageOfInterest(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++		unmarshallMessageOfInterest(orig)
++	})
++}
+diff --git a/protocol/codec_test.go b/protocol/codec_test.go
+index d11a47a..c319384 100644
+--- a/protocol/codec_test.go
++++ b/protocol/codec_test.go
+@@ -267,3 +267,12 @@ func TestRandomizeObjectWithPtrField(t *testing.T) {
+ 	require.True(t, sawNonZeroU16, "RandomizeObject made all zeroes for testObjB.U16")
+ 	require.True(t, sawNonZeroU64, "RandomizeObject made all zeroes for testObjA.U64")
+ }
++
++func FuzzCodec(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++		var tag Tag = "test"
++		dec := NewMsgpDecoderBytes(orig)
++		dec.Decode(&tag)
++	})
++}
+diff --git a/util/bloom/bloom_test.go b/util/bloom/bloom_test.go
+index 2380b8d..39c9276 100644
+--- a/util/bloom/bloom_test.go
++++ b/util/bloom/bloom_test.go
+@@ -390,3 +390,10 @@ func TestBloomFilterReferenceHash(t *testing.T) {
+ 	require.NoError(t, err)
+ 	require.Equal(t, []byte{0x0, 0x0, 0x0, 0x7, 0x11, 0x22, 0x33, 0x44, 0x62, 0xf0, 0xe, 0x2c, 0x8c}, bytes)
+ }
++
++func FuzzBloom(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++		UnmarshalBinary(orig)
++	})
++}
+diff --git a/util/timers/monotonic_test.go b/util/timers/monotonic_test.go
+index f8821b3..ffbea2e 100644
+--- a/util/timers/monotonic_test.go
++++ b/util/timers/monotonic_test.go
+@@ -17,10 +17,11 @@
+ package timers
+ 
+ import (
+-	"github.com/algorand/go-algorand/test/partitiontest"
+ 	"math/rand"
+ 	"testing"
+ 	"time"
++
++	"github.com/algorand/go-algorand/test/partitiontest"
+ )
+ 
+ func polled(ch <-chan time.Time) bool {
