@@ -24,3 +24,9 @@ poetry run python tests/fuzz/fuzz_scripts.py tests/fuzz/fuzz_scripts_corpus/
 poetry run python tests/fuzz/fuzz_token.py tests/fuzz/fuzz_token_corpus/
 poetry run python tests/fuzz/fuzz_transaction.py tests/fuzz/fuzz_transaction_corpus/
 ```
+
+## Work
+
+* After parser bugs.
+* Check for fuzz blocker.
+* Get the code coverage of fuzzers.
