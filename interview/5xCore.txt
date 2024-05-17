@@ -1,0 +1,28 @@
+It will be on basic understanding on the Fuzzing and general security, strategic thinking;
+
+Goal:
+    - Write my own fuzzer from scratch;
+    - Write my own instrument;
+    - Write my own grammar mutation EBNF;
+
+Why-Work:
+    - http://phrack.org/issues/7/3.html
+    - http://www.catb.org/esr/faqs/hacker-howto.html
+    - https://krebsonsecurity.com/2012/08/how-to-break-into-security-miller-edition
+    - https://www.freecodecamp.org/news/so-you-want-to-work-in-security-bc6c10157d23
+    - https://ifsec.blogspot.com/2018/02/so-you-want-to-work-in-security-and-for.html
+
+Fuzzer-mechanic:
+    - https://llvm.org/docs/LibFuzzer.html
+    - https://clang.llvm.org/docs/SanitizerCoverage.html
+    - https://firefox-source-docs.mozilla.org/tools/fuzzing/index.html
+    - https://github.com/AFLplusplus/AFLplusplus/blob/stable/docs/fuzzing_in_depth.md
+    - https://github.com/AFLplusplus/AFLplusplus/blob/stable/instrumentation/README.instrument_list.md
+
+Fuzzer-info:
+    - https://www.code-intelligence.com/what-is-fuzz-testing
+    - https://www.code-intelligence.com/blog/implementing-fuzzing-tools
+    - https://www.code-intelligence.com/blog/the-magic-behind-feedback-based-fuzzing
+
+Technical:
+    - https://carstein.github.io/2021/06/28/technical-interviews.html

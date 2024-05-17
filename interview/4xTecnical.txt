@@ -1,0 +1,25 @@
+Bugs:
+    - Double free
+    - Memory leak
+    - Use after free
+    - Null pointer dereference
+    - Integer overflow/underflow
+    - OOB read/write (Underflow/Overflow)
+    - https://cwe.mitre.org/data/definitions/658.html
+    - https://cwe.mitre.org/data/definitions/659.html
+
+Technical:
+    - Heap
+    - Stack
+    - Pointer
+    - Memory paging
+    - Virtual Memory
+    - Virtual method table
+    - Class
+    - Object
+    - Virtual function      [Overlord function]
+    - Virtual destructor    [free Virtual Memory leak]
+    - Abstraction           [All about Interface]
+    - Inheritance           [Child inherit properties from parent]
+    - Encapsulation         [Private/Public data(variables)/methods(functions) restricting access]
+    - Polymorphism          [Two+ functions with same name but different arguments]

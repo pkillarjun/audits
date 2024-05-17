@@ -1,0 +1,11 @@
+--- amf_config.hpp	2023-01-29 12:32:16.000000000 +0530
++++ amf_config.hpp.new	2023-01-31 12:14:43.999990106 +0530
+@@ -196,7 +196,7 @@
+   uint32_t auth_retry_max_count;
+ } amf_config_t;
+ 
+-int amf_app_init(amf_config_t*);
++int amf_app_init(const amf_config_t* amf_config_p);
+ 
+ extern amf_config_t amf_config; /*global*/
+ 

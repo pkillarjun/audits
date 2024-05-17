@@ -1,0 +1,21 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "nas5g_message_decode",
+    srcs = [
+        "nas5g_message_decode.cpp",
+    ],
+    deps = [
+        "//lte/gateway/c/core:lib_agw_of"        
+    ],
+)
+
+cc_binary(
+    name = "nas_message_decode",
+    srcs = [
+        "nas_message_decode.cpp",
+    ],
+    deps = [
+        "//lte/gateway/c/core:lib_agw_of"        
+    ],
+)

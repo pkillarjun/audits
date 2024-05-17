@@ -1,0 +1,93 @@
+Name: Arjun Singh
+TEL: +91 707-300-8669
+Email: ajsinghyadav00@gmail.com
+
+GitHub: github.com/0x34d
+Twitter: twitter.com/0x34d
+
+---------------------------------------------------------------------
+Skills
+
+Languages:
+    * C
+    * C++
+    * Go
+    * Rust
+    * Shell
+    * Python
+    * Solidity
+
+Fuzzing Tools:
+    * AFL
+    * WinAFL
+    * Atheris
+    * CI Fuzz
+    * go-fuzz
+    * OSS-Fuzz
+    * honggfuzz
+    * LibFuzzer
+    * Peach Fuzzer
+
+Generic:
+    * Git
+    * Docker
+    * IDA pro
+    * GNU/Linux
+    * Sanitizers
+    * GNU Debugger
+    * Sci Understand
+    * Reverse Engineering
+
+---------------------------------------------------------------------
+Projects
+
+Mine:
+    * github.com/0x34d/go-fuzz-GPT
+
+OSS-Fuzz (Projects I'm Maintaining):
+    * bRPC
+    * CUPS
+    * inih
+    * krb5
+    * lldpd
+    * NTPsec
+    * Open5GS
+    * libupnp
+    * libmodbus
+    * MapServer
+    * NGINX Unit
+    * Apache Traffic Server
+    - Note: In total, 27
+
+Bug & Security Audit:
+    * chiavdf           1
+    * NTPsec            1
+    * odoh-go           1
+    * PJSIP             1
+    * squid-cache       1
+    * time(Meta)        1
+    * VeChain           1
+    * waku              2
+    * ICON crypto       3
+    * Zabbix            3
+    * YADIFA            4
+    * TON crypto        10+
+    * Magma-core        50+
+    - Note: And many others;
+
+---------------------------------------------------------------------
+Education:
+    * 12th Biology
+    * Craw Security Diploma
+    * Self-Taught
+
+---------------------------------------------------------------------
+Interest:
+    * Malware
+    * Touch grass
+    * Video Games
+    * Dark Market Forums
+
+---------------------------------------------------------------------
+Info:
+    - I have a mild stutter, so usually, I don't pick up calls.

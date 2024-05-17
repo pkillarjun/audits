@@ -1,0 +1,57 @@
+Coverage guided fuzzing is cool, but things to keep in mind;
+
+Reconnaissance:
+    * What If
+    * Build process
+    * How many Interface/library
+    * How dose those library works
+
+Coverage:
+    - Statement
+    - Edge coverage
+    - Line coverage
+    - Path coverage
+    - Function coverage
+    - Basic block coverage
+
+Mutator:
+    - AFL
+    - libFuzzer
+    - honggfuzz
+    - Grammar mutation
+    - libprotobuf-mutator
+    - Symbolic execution
+
+
+
+Bad Reconnaissance:
+    - Missing things
+
+Fase Positive:
+    - Bad harness
+    - Some bugs are needed
+
+Roadblock:
+    - Checksum, Magic number
+
+Blockers:
+    - Memory hogging
+    - Too many layers from one harness
+
+Moniter:
+    - Sanitizer
+    - System logs {File, Registry}
+
+
+
+Other-bugs:
+    - DOS;
+    - Logical Bug;
+    - Command Injection;
+
+
+
+Fuzzing-type:
+    - Memory
+    - Differential
+    - Encode Decode

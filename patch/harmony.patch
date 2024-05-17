@@ -1,0 +1,514 @@
+diff --git a/Makefile b/Makefile
+index ee1d40f..61175a7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -167,3 +167,46 @@ docker:
+ 
+ travis_go_checker:
+ 	bash ./scripts/travis_go_checker.sh
++
++fuzz:
++	@go test -fuzz=FuzzParseDerivationPath					github.com/harmony-one/harmony/accounts
++	@go test -fuzz=FuzzUnpackRevert 						github.com/harmony-one/harmony/accounts/abi
++	@go test -fuzz=FuzzUnpackValues 						github.com/harmony-one/harmony/accounts/abi/unpack_test.go
++	@go test -fuzz=FuzzTxRecord 							github.com/harmony-one/harmony/api/service/explorer
++	@go test -fuzz=FuzzHeader_0 							github.com/harmony-one/harmony/block
++	@go test -fuzz=FuzzHeader_1 							github.com/harmony-one/harmony/block
++	@go test -fuzz=FuzzParseAllowedTxs 						github.com/harmony-one/harmony/cmd/harmony
++	@go test -fuzz=FuzzParseBig256 							github.com/harmony-one/harmony/common/math
++	@go test -fuzz=FuzzParseUint64 							github.com/harmony-one/harmony/common/math/integer_test.go
++	@go test -fuzz=FuzzReceiptLogs 							github.com/harmony-one/harmony/core/rawdb
++	@go test -fuzz=FuzzJournalGenerator 					github.com/harmony-one/harmony/core/state/snapshot
++	@go test -fuzz=FuzzBody_0 								github.com/harmony-one/harmony/core/types
++	@go test -fuzz=FuzzBody_1 								github.com/harmony-one/harmony/core/types
++	@go test -fuzz=FuzzBlock 								github.com/harmony-one/harmony/core/types
++	@go test -fuzz=FuzzReceiptForStorage					github.com/harmony-one/harmony/core/types
++	@go test -fuzz=FuzzReceipt 								github.com/harmony-one/harmony/core/types
++	@go test -fuzz=FuzzTransaction 							github.com/harmony-one/harmony/core/types
++	@go test -fuzz=FuzzEthTransaction 						github.com/harmony-one/harmony/core/types
++	@go test -fuzz=FuzzCodeBitmap 							github.com/harmony-one/harmony/core/vm
++	@go test -fuzz=FuzzRun 									github.com/harmony-one/harmony/core/vm
++	@go test -fuzz=FuzzExecute 								github.com/harmony-one/harmony/core/vm/runtime
++	@go test -fuzz=FuzzEvaluate 							github.com/harmony-one/harmony/crypto/vrf/p256
++	@go test -fuzz=FuzzH2 									github.com/harmony-one/harmony/crypto/vrf/p256
++	@go test -fuzz=FuzzIsBech32Address 						github.com/harmony-one/harmony/internal/common
++	@go test -fuzz=FuzzParseAddr 							github.com/harmony-one/harmony/internal/common
++	@go test -fuzz=FuzzNewDecFromStr 						github.com/harmony-one/harmony/numeric
++	@go test -fuzz=FuzzBlock 								github.com/harmony-one/harmony/p2p/stream/protocols/sync
++	@go test -fuzz=FuzzParseStakeMsg 						github.com/harmony-one/harmony/staking
++	@go test -fuzz=FuzzRLPDecodeStakeMsg 					github.com/harmony-one/harmony/staking/types
++	@go test -fuzz=FuzzStakingTransaction 					github.com/harmony-one/harmony/staking/types
++
++install:
++
++apt install libgmp-dev  libssl-dev  make gcc g++
++mkdir -p $(go env GOPATH)/src/github.com/harmony-one
++cd $(go env GOPATH)/src/github.com/harmony-one
++git clone --depth=1 https://github.com/harmony-one/mcl.git
++git clone --depth=1 https://github.com/harmony-one/bls.git
++git clone --depth=1 https://github.com/harmony-one/harmony.git
++cd harmony
++go mod tidy
+diff --git a/accounts/abi/abi_test.go b/accounts/abi/abi_test.go
+index 3e1db87..148c374 100644
+--- a/accounts/abi/abi_test.go
++++ b/accounts/abi/abi_test.go
+@@ -1185,3 +1185,10 @@ func TestParseUint32FromKey(t *testing.T) {
+ 		t.Errorf("Expected error %v, got result", expectedError)
+ 	}
+ }
++
++func FuzzUnpackRevert(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		UnpackRevert(data)
++	})
++}
+diff --git a/accounts/abi/unpack_test.go b/accounts/abi/unpack_test.go
+index b88f778..ac7a6a5 100644
+--- a/accounts/abi/unpack_test.go
++++ b/accounts/abi/unpack_test.go
+@@ -917,3 +917,10 @@ func TestOOMMaliciousInput(t *testing.T) {
+ 		}
+ 	}
+ }
++
++func FuzzUnpackValues(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		parseAllowedTxs(data)
++	})
++}
+diff --git a/accounts/hd_test.go b/accounts/hd_test.go
+index b6b2323..374ad4f 100644
+--- a/accounts/hd_test.go
++++ b/accounts/hd_test.go
+@@ -77,3 +77,10 @@ func TestHDPathParsing(t *testing.T) {
+ 		}
+ 	}
+ }
++
++func FuzzParseDerivationPath(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data string) {
++		ParseDerivationPath(data)
++	})
++}
+diff --git a/api/service/explorer/structs_test.go b/api/service/explorer/structs_test.go
+index 578889f..3e19275 100644
+--- a/api/service/explorer/structs_test.go
++++ b/api/service/explorer/structs_test.go
+@@ -8,6 +8,7 @@ import (
+ 	"github.com/stretchr/testify/assert"
+ 
+ 	"github.com/ethereum/go-ethereum/common"
++	"github.com/ethereum/go-ethereum/rlp"
+ 
+ 	blockfactory "github.com/harmony-one/harmony/block/factory"
+ 	"github.com/harmony-one/harmony/core/types"
+@@ -28,3 +29,11 @@ func TestGetTransaction(t *testing.T) {
+ 	assert.Equal(t, tx.To, common2.MustAddressToBech32(common.HexToAddress(tx1.To().Hex())), "should be equal tx1.To()")
+ 	assert.Equal(t, tx.Bytes, strconv.Itoa(int(tx1.Size())), "should be equal tx1.Size()")
+ }
++
++func FuzzTxRecord(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var tx *TxRecord
++		rlp.DecodeBytes(data, &tx)
++	})
++}
+diff --git a/block/header_test.go b/block/header_test.go
+index 3c98869..c8e6257 100644
+--- a/block/header_test.go
++++ b/block/header_test.go
+@@ -780,3 +780,21 @@ func compareHeaders(x, y blockif.Header) bool {
+ 		equal(x.ShardState(), y.ShardState()) &&
+ 		equal(x.CrossLinks(), y.CrossLinks())
+ }
++
++func FuzzHeader_0(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		h := &Header{}
++
++		stream := rlp.NewStream(bytes.NewReader(data), 0)
++		h.DecodeRLP(stream)
++	})
++}
++
++func FuzzHeader_1(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var h *Header
++		rlp.DecodeBytes(data, &h)
++	})
++}
+diff --git a/cmd/harmony/main_test.go b/cmd/harmony/main_test.go
+index 0ee836f..8c47800 100644
+--- a/cmd/harmony/main_test.go
++++ b/cmd/harmony/main_test.go
+@@ -48,3 +48,10 @@ func TestAllowedTxsParse(t *testing.T) {
+ 		}
+ 	}
+ }
++
++func FuzzParseAllowedTxs(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		parseAllowedTxs(data)
++	})
++}
+diff --git a/common/math/big_test.go b/common/math/big_test.go
+index f896ec6..abdd1c8 100644
+--- a/common/math/big_test.go
++++ b/common/math/big_test.go
+@@ -325,3 +325,10 @@ func TestExp(t *testing.T) {
+ 		}
+ 	}
+ }
++
++func FuzzParseBig256(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data string) {
++		ParseBig256(data)
++	})
++}
+diff --git a/common/math/integer_test.go b/common/math/integer_test.go
+index b31c7c2..825a77e 100644
+--- a/common/math/integer_test.go
++++ b/common/math/integer_test.go
+@@ -114,3 +114,10 @@ func TestMustParseUint64Panic(t *testing.T) {
+ 	}()
+ 	MustParseUint64("ggg")
+ }
++
++func FuzzParseUint64(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data string) {
++		ParseUint64(data)
++	})
++}
+diff --git a/core/rawdb/accessors_chain_test.go b/core/rawdb/accessors_chain_test.go
+index 6edf9f9..64f98d6 100644
+--- a/core/rawdb/accessors_chain_test.go
++++ b/core/rawdb/accessors_chain_test.go
+@@ -332,3 +332,11 @@ func TestBlockReceiptStorage(t *testing.T) {
+ 		t.Fatalf("deleted receipts returned: %v", rs)
+ 	}
+ }
++
++func FuzzReceiptLogs(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var r *receiptLogs
++		rlp.DecodeBytes(data, &r)
++	})
++}
+diff --git a/core/state/snapshot/disklayer_test.go b/core/state/snapshot/disklayer_test.go
+index 80070d6..4e9434e 100644
+--- a/core/state/snapshot/disklayer_test.go
++++ b/core/state/snapshot/disklayer_test.go
+@@ -572,3 +572,11 @@ func TestDiskSeek(t *testing.T) {
+ 		}
+ 	}
+ }
++
++func FuzzJournalGenerator(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var generator journalGenerator
++		rlp.DecodeBytes(data, &generator)
++	})
++}
+diff --git a/core/types/block_test.go b/core/types/block_test.go
+index 4cd3136..ed34f21 100644
+--- a/core/types/block_test.go
++++ b/core/types/block_test.go
+@@ -1065,3 +1065,29 @@ func TestBody_DecodeRLP(t *testing.T) {
+ 		})
+ 	}
+ }
++
++func FuzzBody_0(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		h := &Body{}
++
++		stream := rlp.NewStream(bytes.NewReader(data), 0)
++		h.DecodeRLP(stream)
++	})
++}
++
++func FuzzBody_1(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var b *Body
++		rlp.DecodeBytes(data, &b)
++	})
++}
++
++func FuzzBlock(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var b *Block
++		rlp.DecodeBytes(data, &b)
++	})
++}
+diff --git a/core/types/receipt_test.go b/core/types/receipt_test.go
+index 5a8891c..09ab8ef 100644
+--- a/core/types/receipt_test.go
++++ b/core/types/receipt_test.go
+@@ -5,6 +5,7 @@ import (
+ 	"testing"
+ 
+ 	ethcommon "github.com/ethereum/go-ethereum/common"
++	"github.com/ethereum/go-ethereum/rlp"
+ 
+ 	"github.com/ethereum/go-ethereum/crypto"
+ 	"github.com/harmony-one/harmony/staking"
+@@ -112,3 +113,19 @@ func TestFindLogsWithTopic(t *testing.T) {
+ 		}
+ 	}
+ }
++
++func FuzzReceiptForStorage(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var r *ReceiptForStorage
++		rlp.DecodeBytes(data, &r)
++	})
++}
++
++func FuzzReceipt(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var r *Receipt
++		rlp.DecodeBytes(data, &r)
++	})
++}
+diff --git a/core/types/transaction_test.go b/core/types/transaction_test.go
+index dd2f1c8..98eb690 100644
+--- a/core/types/transaction_test.go
++++ b/core/types/transaction_test.go
+@@ -25,6 +25,7 @@ import (
+ 
+ 	"github.com/ethereum/go-ethereum/common"
+ 	"github.com/ethereum/go-ethereum/crypto"
++	"github.com/ethereum/go-ethereum/rlp"
+ 	"github.com/harmony-one/harmony/internal/params"
+ )
+ 
+@@ -188,3 +189,19 @@ func TestTransactionTimeSort(t *testing.T) {
+ 		}
+ 	}
+ }
++
++func FuzzTransaction(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var tx *Transaction
++		rlp.DecodeBytes(data, &tx)
++	})
++}
++
++func FuzzEthTransaction(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var tx *EthTransaction
++		rlp.DecodeBytes(data, &tx)
++	})
++}
+diff --git a/core/vm/analysis_test.go b/core/vm/analysis_test.go
+index fd2d744..75d4ab7 100644
+--- a/core/vm/analysis_test.go
++++ b/core/vm/analysis_test.go
+@@ -73,3 +73,10 @@ func BenchmarkJumpdestHashing_1200k(bench *testing.B) {
+ 	}
+ 	bench.StopTimer()
+ }
++
++func FuzzCodeBitmap(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		codeBitmap(data)
++	})
++}
+diff --git a/core/vm/evm_test.go b/core/vm/evm_test.go
+index 10e50bd..f4b803e 100644
+--- a/core/vm/evm_test.go
++++ b/core/vm/evm_test.go
+@@ -33,3 +33,22 @@ func TestEpochPrecompile(t *testing.T) {
+ 		t.Error("Epoch did not match")
+ 	}
+ }
++
++func FuzzRun(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++
++		targetEpoch := big.NewInt(1)
++		evm := NewEVM(Context{
++			EpochNumber: targetEpoch,
++		}, nil, params.TestChainConfig, Config{})
++
++		precompileAddr := common.BytesToAddress([]byte{251})
++		contract := Contract{
++			CodeAddr: &precompileAddr,
++			Gas:      GasQuickStep,
++		}
++
++		run(evm, &contract, data, true)
++	})
++}
+diff --git a/core/vm/runtime/runtime_test.go b/core/vm/runtime/runtime_test.go
+index 1ad8d19..ed4848c 100644
+--- a/core/vm/runtime/runtime_test.go
++++ b/core/vm/runtime/runtime_test.go
+@@ -200,3 +200,12 @@ func BenchmarkEVM_CREATE2_1200(bench *testing.B) {
+ 	// initcode size 1200K, repeatedly calls CREATE2 and then modifies the mem contents
+ 	benchmarkEVMCreate(bench, "5b5862124f80600080f5600152600056")
+ }
++
++func FuzzExecute(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		Execute(data, nil, nil)
++
++		Execute(data, data, &Config{GasLimit: 3000000})
++	})
++}
+diff --git a/crypto/vrf/p256/p256_test.go b/crypto/vrf/p256/p256_test.go
+index 52619d2..2b97118 100644
+--- a/crypto/vrf/p256/p256_test.go
++++ b/crypto/vrf/p256/p256_test.go
+@@ -226,3 +226,18 @@ func h2i(h string) [32]byte {
+ 	copy(i[:], b)
+ 	return i
+ }
++
++func FuzzEvaluate(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		k, _ := GenerateKey()
++		k.Evaluate(data)
++	})
++}
++
++func FuzzH2(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		H2(data)
++	})
++}
+diff --git a/internal/common/address_test.go b/internal/common/address_test.go
+index aacd681..f428538 100644
+--- a/internal/common/address_test.go
++++ b/internal/common/address_test.go
+@@ -248,3 +248,17 @@ func TestAddress_Value(t *testing.T) {
+ 		})
+ 	}
+ }
++
++func FuzzIsBech32Address(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data string) {
++		IsBech32Address(data)
++	})
++}
++
++func FuzzParseAddr(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data string) {
++		ParseAddr(data)
++	})
++}
+diff --git a/numeric/decimal_test.go b/numeric/decimal_test.go
+index 7b790f2..635904e 100644
+--- a/numeric/decimal_test.go
++++ b/numeric/decimal_test.go
+@@ -392,3 +392,10 @@ func TestDiv(t *testing.T) {
+ 	}
+ 
+ }
++
++func FuzzNewDecFromStr(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data string) {
++		NewDecFromStr(data)
++	})
++}
+diff --git a/p2p/stream/protocols/sync/chain_test.go b/p2p/stream/protocols/sync/chain_test.go
+index 8883d7c..44b5b1d 100644
+--- a/p2p/stream/protocols/sync/chain_test.go
++++ b/p2p/stream/protocols/sync/chain_test.go
+@@ -6,6 +6,7 @@ import (
+ 	"errors"
+ 	"fmt"
+ 	"math/big"
++	"testing"
+ 
+ 	"github.com/ethereum/go-ethereum/common"
+ 	"github.com/ethereum/go-ethereum/rlp"
+@@ -200,3 +201,11 @@ func checkBlocksByHashesResult(b []byte, hs []common.Hash) error {
+ 	}
+ 	return nil
+ }
++
++func FuzzBlock(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var block *types.Block
++		rlp.DecodeBytes(data, &block)
++	})
++}
+diff --git a/staking/precompile_test.go b/staking/precompile_test.go
+index 2e79c4f..3e9de3a 100644
+--- a/staking/precompile_test.go
++++ b/staking/precompile_test.go
+@@ -189,3 +189,10 @@ func TestParseStakeMsgs(t *testing.T) {
+ 		testParseStakeMsg(test, t)
+ 	}
+ }
++
++func FuzzParseStakeMsg(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		ParseStakeMsg(common.HexToAddress("1337"), data)
++	})
++}
+diff --git a/staking/types/transaction_test.go b/staking/types/transaction_test.go
+index 55f2105..2609267 100644
+--- a/staking/types/transaction_test.go
++++ b/staking/types/transaction_test.go
+@@ -9,6 +9,7 @@ import (
+ 	"github.com/harmony-one/harmony/crypto/bls"
+ 
+ 	"github.com/ethereum/go-ethereum/common"
++	"github.com/ethereum/go-ethereum/rlp"
+ 	bls_core "github.com/harmony-one/bls/ffi/go/bls"
+ 	common2 "github.com/harmony-one/harmony/internal/common"
+ 	numeric "github.com/harmony-one/harmony/numeric"
+@@ -189,3 +190,22 @@ func TestData(t *testing.T) {
+ 		t.Error("expected", e, "got", nil)
+ 	}
+ }
++
++func FuzzRLPDecodeStakeMsg(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		RLPDecodeStakeMsg(data, DirectiveCreateValidator)
++		RLPDecodeStakeMsg(data, DirectiveEditValidator)
++		RLPDecodeStakeMsg(data, DirectiveDelegate)
++		RLPDecodeStakeMsg(data, DirectiveUndelegate)
++		RLPDecodeStakeMsg(data, DirectiveCollectRewards)
++	})
++}
++
++func FuzzStakingTransaction(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var st *StakingTransaction
++		rlp.DecodeBytes(data, &st)
++	})
++}
