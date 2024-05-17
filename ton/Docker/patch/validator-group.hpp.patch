@@ -1,0 +1,11 @@
+--- validator-group.hpp	2022-12-29 10:37:54.970622365 +0000
++++ validator-group.hpp.backup	2022-12-29 10:39:07.599472521 +0000
+@@ -17,7 +17,7 @@
+     Copyright 2017-2020 Telegram Systems LLP
+ */
+ #pragma once
+-
++#include <list>
+ #include "interfaces/validator-manager.h"
+ 
+ #include "validator-session/validator-session.h"

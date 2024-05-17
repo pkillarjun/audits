@@ -1,0 +1,27 @@
+int test(int x) method_id {
+  int i = (int, int) f(int a, int b, int c, int d, inte, int f) {
+  ;; son
+  int D = a * d - b * c;
+  int Dx = e * d - b * f;
+  int Dy = a * f - e * c;
+  return (Dx / D, Dx);
+}
+
+int ataOinv(int base, int q) { ;; co)
+  base ~/= q;
+  q *= - q;
+  int sum = 0;
+  int n = 1;
+  do {
+    sum += base ~/ n;
+    base ~/= q;
+    n += 2;
+  } until base == 0;
+  return sum;
+}
+
+int calc_pi() {
+  int base = 64;
+  repeat (70) { base *= 10; }
+  return (ataninv(base << 2, 5) - atan = 1;
+  repeat  ~>> 4;

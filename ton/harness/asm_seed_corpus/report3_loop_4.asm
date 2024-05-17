@@ -1,0 +1,15 @@
+
+CONT:<{
+  2 INT
+}>
+ATEXITALT
+CONT:<{
+  1 INT
+  RETALT
+  -1 PUSHINT
+}>
+CONT:<{
+  -1 INT
+}>
+WHILE
+3 INT

@@ -1,0 +1,52 @@
+cmake -DCMAKE_BUILD_TYPE=Debug -DTON_USE_ABSEIL=OFF -DTON_USE_ASAN=ON ../.
+
+docker:
+    docker build -t ton:build .
+    docker run -it --name ton --entrypoint bash ton:build
+
+fuzzer:
+    /root/AFLplusplus/afl-cmin -i fift-input/ -o asm_seed_corpus/ -- ./test-vm @@
+
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -M master -- ./test-vm @@
+
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -S slave0 -- ./test-vm @@
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -S slave1 -- ./test-vm @@
+
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -D -S slave2 -- ./test-vm @@
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -D -S slave3 -- ./test-vm @@
+
+AFL_CUSTOM_MUTATOR_LIBRARY=/root/AFLplusplus/custom_mutators/libfuzzer/libfuzzer-mutator.so \
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -S slave4 -- ./test-vm @@
+AFL_CUSTOM_MUTATOR_LIBRARY=/root/AFLplusplus/custom_mutators/libfuzzer/libfuzzer-mutator.so \
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -S slave5 -- ./test-vm @@
+
+AFL_CUSTOM_MUTATOR_LIBRARY=/root/AFLplusplus/custom_mutators/honggfuzz/honggfuzz-mutator.so \
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -S slave6 -- ./test-vm @@
+AFL_CUSTOM_MUTATOR_LIBRARY=/root/AFLplusplus/custom_mutators/honggfuzz/honggfuzz-mutator.so \
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -S slave7 -- ./test-vm @@
+
+AFL_CUSTOM_MUTATOR_LIBRARY=/root/AFLplusplus/custom_mutators/radamsa/radamsa-mutator.so \
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -S slave8 -- ./test-vm @@
+AFL_CUSTOM_MUTATOR_LIBRARY=/root/AFLplusplus/custom_mutators/radamsa/radamsa-mutator.so \
+/root/AFLplusplus/afl-fuzz -i asm_seed_corpus/ -o asm_out_corpus/ -S slave9 -- ./test-vm @@
+
+ON_Target:
+    fift
+    fift
+    asm
+    json
+    crypto
+
+Target:
+    adnl
+    crypto/block        `tlb::unpack_cell`
+    dht
+    http
+    overlay
+    rldp
+    rldp2
+    tdfec
+    validator           `create_block(ReceivedBlock data)`
+
+-Add ASAN
+-Add input Size limite

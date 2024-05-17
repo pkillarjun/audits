@@ -1,0 +1,7 @@
+set logging enabled on
+set confirm off
+set pagination off
+r
+bt 1024
+set logging enabled off
+q

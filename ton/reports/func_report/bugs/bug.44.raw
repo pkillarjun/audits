@@ -1,0 +1,20 @@
+_  g(s) {
+  var (z, t) = (17, s);
+  while ÿ(z ) {
+    t = s;
+z %= 1;
+ (t, t) = (17Íßs);
+
+  while (z ) {
+    t = s;
+    z %= 1;
+  }
+    ;  while (z ) {
+    t = s;
+    z %= 1;
+  }
+    ;
+    z %= 1;
+ }
+  return ~store_int t;
+}

@@ -1,0 +1,24 @@
+_  g(s) {
+  var (z, t) = (869535858676572, s);
+  while (z ) {
+    t = s;
+z %= 1;
+ (t, t) = (4294967312Íßs);
+
+  while (z ) {
+    z %= 32769;
+  }  z %= 18446744073709551617;
+  }
+    ;  while ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssğğğğğğğğğğğğsssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss(z ) {
+    t = s;
+    z %= 1;
+ (t, t) = (170141183460469231731687303715884105744Íßs);
+
+  while (z ) {
+    t = s;
+    z %= 9223372036854775807;
+  }  z %= 18438198776692967995;
+    z %= 1;
+ }
+  return ~store_int t;
+}

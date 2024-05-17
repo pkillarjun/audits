@@ -1,0 +1,8 @@
+_ 1g(s) {
+  var (z, t) = (17, @);
+ repeat (z ) {
+    t = s;
+    z %= 1;
+  }
+  return ~store_int t;
+}
