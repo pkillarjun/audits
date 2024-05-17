@@ -1,0 +1,210 @@
+diff --git a/Makefile b/Makefile
+index 0d38242..48756aa 100644
+--- a/Makefile
++++ b/Makefile
+@@ -209,3 +209,20 @@ test% : $(BIN_DIR)/gochain
+ all : $(BUILD_TARGETS)
+ 
+ -include local.mk
++
++fuzzing:
++	@go test -fuzz=FuzzBlockDataFactory		-fuzztime=3600s github.com/icon-project/goloop/block
++	@go test -fuzz=FuzzPeekVersion			-fuzztime=3600s github.com/icon-project/goloop/block
++	@go test -fuzz=FuzzDigest				-fuzztime=3600s github.com/icon-project/goloop/btp
++	@go test -fuzz=FuzzETHmodule			-fuzztime=3600s github.com/icon-project/goloop/btp/ntm
++	@go test -fuzz=FuzzIconModule			-fuzztime=3600s github.com/icon-project/goloop/btp/ntm
++	@go test -fuzz=FuzzModule				-fuzztime=3600s github.com/icon-project/goloop/btp/ntm
++	@go test -fuzz=FuzzProof				-fuzztime=3600s github.com/icon-project/goloop/btp/ntm
++	@go test -fuzz=FuzzVerify				-fuzztime=3600s github.com/icon-project/goloop/btp/ntm
++
++#func(?:\s+\([^\)]+\))?\s+\w+\s*\([^\)]*\[\]byte[^\)]*\)
++#func(?:\s+\([^\)]+\))?\s+\w+\s*\([^\)]*string[^\)]*\)
++#func(?:\s+\([^\)]+\))?\s+\w+\s*\([^\)]*io.Reader[^\)]*\)
++
++#java		javaee,sdk,testsuite
++#python		iconee,pyee,testsuite
+diff --git a/block/blockdatafactory_test.go b/block/blockdatafactory_test.go
+index 7d75974..e383852 100644
+--- a/block/blockdatafactory_test.go
++++ b/block/blockdatafactory_test.go
+@@ -44,3 +44,17 @@ func TestBlockDataFactory_Basics(t *testing.T) {
+ 	assert.NoError(err)
+ 	assert.EqualValues(blk.ID(), bd.ID())
+ }
++
++func FuzzBlockDataFactory(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++		nd := test.NewNode(t)
++		defer nd.Close()
++
++		nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
++
++		bdf, _ := block.NewBlockDataFactory(nd.Chain, nil)
++
++		bdf.NewBlockDataFromReader(bytes.NewReader(orig))
++	})
++}
+diff --git a/block/version_test.go b/block/version_test.go
+index 1cc43c3..88548b6 100644
+--- a/block/version_test.go
++++ b/block/version_test.go
+@@ -87,3 +87,18 @@ func TestPeekVersionTestReader(t *testing.T) {
+ 	assert.Nil(t, err)
+ 	assert.Equal(t, hf, hf2)
+ }
++
++func FuzzPeekVersion(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, orig []byte) {
++
++		_, r, err := PeekVersion(bytes.NewReader(orig))
++
++		if err != nil {
++			return
++		}
++
++		var hf2 V2HeaderFormat
++		_ = codec.Unmarshal(r, &hf2)
++	})
++}
+diff --git a/btp/digest_test.go b/btp/digest_test.go
+index 09d50a5..f4fea03 100644
+--- a/btp/digest_test.go
++++ b/btp/digest_test.go
+@@ -123,3 +123,19 @@ func TestDigest_Sections(t *testing.T) {
+ 	nsFromBS2, _ := ntsFromBS2.NetworkSectionFor(1)
+ 	assert.EqualValues(ns.Hash(), nsFromBS2.Hash())
+ }
++
++func FuzzDigest(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, input []byte) {
++
++		if len(input) < 64 {
++			return
++		}
++
++		NewDigestFromBytes(input)
++	})
++}
++
++func TestDigestBug(t *testing.T) {
++	NewDigestFromBytes([]byte("\xfe0\x100000\x00\xff0000000000000000000\xe800000000000000000000000000000000000000000000000000000000000000000000000"))
++}
+diff --git a/btp/ntm/ethmodule_test.go b/btp/ntm/ethmodule_test.go
+index ca0329b..b5d9da2 100644
+--- a/btp/ntm/ethmodule_test.go
++++ b/btp/ntm/ethmodule_test.go
+@@ -212,3 +212,23 @@ func TestEthModule_MerkleProof(t *testing.T) {
+ 		assert.EqualValues(c.exp, mod.MerkleProof(&c.data, c.idx), "case=%d data=%x idx=%d", i, c.data, c.idx)
+ 	}
+ }
++
++func FuzzETHmodule(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, input []byte) {
++		//check len is more then 256
++		if len(input) < 256 {
++			return
++		}
++
++		keccak256(input)
++		newEthAddressFromPubKey(input)
++
++		fuzz := ethModuleCore{}
++
++		fuzz.NewProofFromBytes(input)
++		fuzz.AddressFromPubKey(input)
++		fuzz.NewProofContext([][]byte{input})
++		fuzz.NewProofContextFromBytes(input)
++	})
++}
+diff --git a/btp/ntm/iconmodule_test.go b/btp/ntm/iconmodule_test.go
+index d2fda82..2c0bd20 100644
+--- a/btp/ntm/iconmodule_test.go
++++ b/btp/ntm/iconmodule_test.go
+@@ -33,3 +33,19 @@ func TestIconModule_newAddressFromPubKey(t *testing.T) {
+ 	assert.NoError(err)
+ 	assert.EqualValues(expAddr, addr)
+ }
++
++func FuzzIconModule(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, input []byte) {
++		//check size is more than 64
++		if len(input) < 64 {
++			return
++		}
++		NewIconAddressFromPubKey(input)
++
++		fuzz := iconModuleCore{}
++		fuzz.NewProofContextFromBytes(input)
++		fuzz.NewProofFromBytes(input)
++		fuzz.NewProofContext([][]byte{input})
++	})
++}
+diff --git a/btp/ntm/module_test.go b/btp/ntm/module_test.go
+index 75c451d..b330c26 100644
+--- a/btp/ntm/module_test.go
++++ b/btp/ntm/module_test.go
+@@ -54,3 +54,20 @@ func TestModule_Basics(t *testing.T) {
+ 	testModuleBasics(t, "eth", "ecdsa/secp256k1")
+ 	testModuleBasics(t, "icon", "ecdsa/secp256k1")
+ }
++
++func FuzzModule(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, input []byte) {
++
++		InitIconModule()
++		mod := ForUID("icon")
++
++		mod.NewProofContextFromBytes(input)
++		mod.NewProofContext([][]byte{input})
++		mod.AddressFromPubKey(input)
++		mod.NewProofFromBytes(input)
++		mod.NetworkTypeKeyFromDSAKey(input)
++
++		mod.Hash(input)
++	})
++}
+diff --git a/btp/ntm/proof_test.go b/btp/ntm/proof_test.go
+index c9b78b6..d90f434 100644
+--- a/btp/ntm/proof_test.go
++++ b/btp/ntm/proof_test.go
+@@ -225,3 +225,13 @@ func TestEthProofContext_Verify_FailDuplicatedPK(t *testing.T) {
+ 	p.Add(pp)
+ 	s.assert.Error(s.pc.Verify(msgHash, p))
+ }
++
++func FuzzProof(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, input []byte) {
++
++		s := newEthTestSetup(t, 4)
++		s.pc.NewProofFromBytes(input)
++		s.pc.NewProofPartFromBytes(input)
++	})
++}
+diff --git a/btp/ntm/secp256k1dsam_test.go b/btp/ntm/secp256k1dsam_test.go
+index 10b3605..389d500 100644
+--- a/btp/ntm/secp256k1dsam_test.go
++++ b/btp/ntm/secp256k1dsam_test.go
+@@ -41,3 +41,16 @@ func TestSecp256k1DSAModule_Verify(t *testing.T) {
+ 
+ 	assert.Error(dsam.Verify(pkBytes[:len(pkBytes)-1]))
+ }
++
++func FuzzVerify(f *testing.F) {
++
++	f.Fuzz(func(t *testing.T, input []byte) {
++
++		if len(input) != 33 && len(input) != 65 {
++			return
++		}
++
++		dsam := DSAModuleForName(secp256k1DSA)
++		dsam.Verify(input)
++	})
++}

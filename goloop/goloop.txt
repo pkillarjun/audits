@@ -1,0 +1,14 @@
+Recon:
+    - https://github.com/CodeIntelligenceTesting/jazzer/blob/main/README.md
+    - https://google.github.io/oss-fuzz/getting-started/new-project-guide/jvm-lang
+    - https://www.code-intelligence.com/blog/how-to-write-fuzz-targets-for-java-applications
+    - https://medium.com/@sevanthi404rt/jazzer-unleashed-fuzzing-java-applications-for-robustness-3c6490a921f4
+    - https://android.googlesource.com/platform/external/jazzer-api/+/de1c6cf48a591e7cf8a20e2b5bb4dca552030bf7/README.md
+
+Run:
+sudo dnf install -y java-17-openjdk java-17-openjdk-devel
+using jdk 11.0
+
+export JAVAEE_DIR=/home/legion/project/goloop/javaee
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-17.0.8.0.7-1.fc38.x86_64/
+export JAZZER_FUZZ=1

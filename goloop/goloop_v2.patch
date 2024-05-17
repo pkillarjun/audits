@@ -1,0 +1,759 @@
+diff --git a/Makefile b/Makefile
+index 0d38242..dab24c6 100644
+--- a/Makefile
++++ b/Makefile
+@@ -205,6 +205,13 @@ test :
+ test% : $(BIN_DIR)/gochain
+ 	@ cd testsuite ; ./gradlew $@
+ 
++fuzz:
++#go test -fuzz=FuzzReceipt 			$(PWD)/service/txresult
++#go test -run TestReceiptBug ./service/txresult
++
++#go test -fuzz=FuzzInfo 				$(PWD)/service/scoreapi
++#go test -run TestInfoBug ./service/scoreapi
++
+ .DEFAULT_GOAL := all
+ all : $(BUILD_TARGETS)
+ 
+diff --git a/block/blockdatafactory_test.go b/block/blockdatafactory_test.go
+index 7d75974..c74f4f3 100644
+--- a/block/blockdatafactory_test.go
++++ b/block/blockdatafactory_test.go
+@@ -44,3 +44,18 @@ func TestBlockDataFactory_Basics(t *testing.T) {
+ 	assert.NoError(err)
+ 	assert.EqualValues(blk.ID(), bd.ID())
+ }
++
++func FuzzBlockDataFactory(f *testing.F) {
++	nd := test.NewNode(f)
++	defer nd.Close()
++	nd.ProposeFinalizeBlock(consensus.NewEmptyCommitVoteList())
++
++	bdf, err := block.NewBlockDataFactory(nd.Chain, nil)
++	if err != nil {
++		return
++	}
++
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		_, _ = bdf.NewBlockDataFromReader(bytes.NewReader(input_data))
++	})
++}
+diff --git a/block/manageri_test.go b/block/manageri_test.go
+index b704e25..f2cdd29 100644
+--- a/block/manageri_test.go
++++ b/block/manageri_test.go
+@@ -395,3 +395,21 @@ func TestBlockManager_WaitForBlock_Block(t *testing.T) {
+ 		assert.Equal(t, blk.ID(), br.blk.ID())
+ 	}
+ }
++
++func FuzzManager(f *testing.F) {
++	var s *blockManagerTestSetUp
++	var initcheck bool = false
++
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		if len(input_data) > 512 {
++			return
++		}
++		if !initcheck {
++			s = newBlockManagerTestSetUp(t)
++			initcheck = true
++		}
++		_, _ = s.bm.Import(bytes.NewReader(input_data), 0, func(blk module.BlockCandidate, err error) {
++			assert.Fail(t, "canceled import cb was called")
++		})
++	})
++}
+diff --git a/common/codec/typed_test.go b/common/codec/typed_test.go
+index 69672b9..4a8b9ed 100644
+--- a/common/codec/typed_test.go
++++ b/common/codec/typed_test.go
+@@ -193,3 +193,13 @@ func TestErrorHandling(t *testing.T) {
+ 		assert.Error(t, err)
+ 	}
+ }
++
++func FuzzTypedObj(f *testing.F) {
++	f.Fuzz(func(t *testing.T, data []byte) {
++
++		var to TypedObj
++		if _, err := UnmarshalFromBytes(data, &to); err != nil {
++			return
++		}
++	})
++}
+diff --git a/common/codec/typeddict_test.go b/common/codec/typeddict_test.go
+index 192efe9..d000e3f 100644
+--- a/common/codec/typeddict_test.go
++++ b/common/codec/typeddict_test.go
+@@ -129,3 +129,10 @@ func TestTypedDict_RLPReadSelfError(t *testing.T) {
+ 		}
+ 	}
+ }
++
++func FuzzTypedDict(f *testing.F) {
++	f.Fuzz(func(t *testing.T, data []byte) {
++		var d *TypedDict
++		UnmarshalFromBytes(data, &d)
++	})
++}
+diff --git a/common/crypto/signature_test.go b/common/crypto/signature_test.go
+index ab789ff..6054359 100644
+--- a/common/crypto/signature_test.go
++++ b/common/crypto/signature_test.go
+@@ -192,3 +192,22 @@ func Test_ParseSignatureVRS(t *testing.T) {
+ 		assert.Nil(t, sig)
+ 	})
+ }
++
++func FuzzNewSignature(f *testing.F) {
++	f.Fuzz(func(t *testing.T, data []byte) {
++		sk, _ := GenerateKeyPair()
++		NewSignature(data, sk)
++	})
++}
++
++func FuzzParseSignatureOnly(f *testing.F) {
++	f.Fuzz(func(t *testing.T, data []byte) {
++		ParseSignature(data)
++	})
++}
++
++func FuzzParseSignatureVRS(f *testing.F) {
++	f.Fuzz(func(t *testing.T, data []byte) {
++		ParseSignatureVRS(data)
++	})
++}
+diff --git a/common/trie/ompt/rlp_test.go b/common/trie/ompt/rlp_test.go
+index e9816e4..dfc5fdb 100644
+--- a/common/trie/ompt/rlp_test.go
++++ b/common/trie/ompt/rlp_test.go
+@@ -82,3 +82,13 @@ func FuzzRLPParseList(f *testing.F) {
+ 		rlpParseList(data)
+ 	})
+ }
++
++func FuzzRlpEncodeBytes(f *testing.F) {
++	f.Fuzz(func(t *testing.T, data []byte) {
++		endata := rlpEncodeBytes(data)
++		dedata, _ := rlpParseBytes(endata)
++		if !reflect.DeepEqual(data, dedata) {
++			panic("not equal")
++		}
++	})
++}
+diff --git a/consensus/commitvotelist_test.go b/consensus/commitvotelist_test.go
+index 9c6c13a..c325595 100644
+--- a/consensus/commitvotelist_test.go
++++ b/consensus/commitvotelist_test.go
+@@ -47,3 +47,9 @@ func TestCommitVoteList_enoughVote(t *testing.T) {
+ 	assert.False(t, enoughVote(4, 7))
+ 	assert.True(t, enoughVote(5, 7))
+ }
++
++func FuzzNewCommitVoteSetFromBytes(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		NewCommitVoteSetFromBytes(input_data)
++	})
++}
+diff --git a/consensus/partset_test.go b/consensus/partset_test.go
+index 0a843a4..ac95174 100644
+--- a/consensus/partset_test.go
++++ b/consensus/partset_test.go
+@@ -90,3 +90,9 @@ func TestBlockParts(t *testing.T) {
+ 		t.Error("Recovered bytes are not same")
+ 	}
+ }
++
++func FuzzNewPart(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		NewPart(input_data)
++	})
++}
+diff --git a/consensus/patch_test.go b/consensus/patch_test.go
+index 6c4a569..51f12e2 100644
+--- a/consensus/patch_test.go
++++ b/consensus/patch_test.go
+@@ -209,3 +209,9 @@ func TestSkipPatch_Basics(t_ *testing.T) {
+ 	t.Assert.Equal(module.PatchTypeSkipTransaction, sp2.Type())
+ 	t.Assert.Equal(bs, sp2.Data())
+ }
++
++func FuzzDecodePatch(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		DecodePatch(module.PatchTypeSkipTransaction, input_data)
++	})
++}
+diff --git a/consensus/voteset_test.go b/consensus/voteset_test.go
+index 3f5f7d6..ab0fed6 100644
+--- a/consensus/voteset_test.go
++++ b/consensus/voteset_test.go
+@@ -169,3 +169,10 @@ func TestHeightVoteSet_getRoundEvidences(t *testing.T) {
+ 		assert.EqualValues(10, vl.Get(i).Round)
+ 	}
+ }
++
++func FuzzGetRoundEvidences(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		var hvs heightVoteSet
++		hvs.getRoundEvidences(9, input_data)
++	})
++}
+diff --git a/icon/blockv0/blockvote_test.go b/icon/blockv0/blockvote_test.go
+index 32b0247..7625578 100644
+--- a/icon/blockv0/blockvote_test.go
++++ b/icon/blockv0/blockvote_test.go
+@@ -31,3 +31,9 @@ func TestBlockVote_NewBlockVote(t *testing.T) {
+ 	err := bv.Verify()
+ 	assert.NoError(t, err)
+ }
++
++func FuzzNewBlockVotesFromBytes(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		blockv0.NewBlockVotesFromBytes(input_data)
++	})
++}
+diff --git a/icon/icsim/receipt.go b/icon/icsim/receipt.go
+index 75fc8e2..bb047b0 100644
+--- a/icon/icsim/receipt.go
++++ b/icon/icsim/receipt.go
+@@ -29,8 +29,8 @@ type Receipt interface {
+ 
+ type receipt struct {
+ 	blockHeight int64
+-	status int
+-	err error
++	status      int
++	err         error
+ }
+ 
+ func (r *receipt) BlockHeight() int64 {
+diff --git a/icon/iiss/base_test.go b/icon/iiss/base_test.go
+index 010474e..cfacdce 100644
+--- a/icon/iiss/base_test.go
++++ b/icon/iiss/base_test.go
+@@ -16,6 +16,8 @@
+ package iiss
+ 
+ import (
++	"testing"
++
+ 	"github.com/icon-project/goloop/module"
+ 	"github.com/icon-project/goloop/service/contract"
+ )
+@@ -38,3 +40,10 @@ func (cc *testCallContext) BlockHeight() int64 {
+ func (cc *testCallContext) setBlockHeight(blockHeight int64) {
+ 	cc.blockHeight = blockHeight
+ }
++
++func FuzzBaseV3Bytes(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		checkBaseV3Bytes(input_data)
++		parseBaseV3Bytes(input_data)
++	})
++}
+diff --git a/icon/iiss/icstate/rewardfund_test.go b/icon/iiss/icstate/rewardfund_test.go
+index be6e091..ede0c10 100644
+--- a/icon/iiss/icstate/rewardfund_test.go
++++ b/icon/iiss/icstate/rewardfund_test.go
+@@ -45,3 +45,9 @@ func TestRewardFund(t *testing.T) {
+ 	assert.Equal(t, int64(iglobal*iprep/100), rf.GetPRepFund().Int64())
+ 	assert.Equal(t, int64(iglobal*ivoter/100), rf.GetVoterFund().Int64())
+ }
++
++func FuzzNewRewardFundFromByte(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		newRewardFundFromByte(input_data)
++	})
++}
+diff --git a/icon/lcimporter/servicemanager_test.go b/icon/lcimporter/servicemanager_test.go
+index 044a2f4..57e4993 100644
+--- a/icon/lcimporter/servicemanager_test.go
++++ b/icon/lcimporter/servicemanager_test.go
+@@ -99,7 +99,7 @@ func TestServiceManager_Basic(t *testing.T) {
+ 
+ 	ex, err := NewExecutorWithBC(rdb, idb, logger, bc)
+ 	assert.NoError(t, err)
+-	chain := &testChain {
++	chain := &testChain{
+ 		log: logger,
+ 		idb: idb,
+ 	}
+@@ -124,7 +124,7 @@ func TestServiceManager_Basic(t *testing.T) {
+ 	//  GENESIS Transition
+ 	height := int64(0)
+ 	ts := int64(0)
+-	gtx := buildTestTx(0,  "GENESIS")
++	gtx := buildTestTx(0, "GENESIS")
+ 	gtxs := transaction.NewTransactionListFromSlice(idb, []module.Transaction{gtx})
+ 	tr1, err := sm.CreateTransition(tr0, gtxs, common.NewBlockInfo(height, ts), nil, true)
+ 	assert.NotNil(t, tr1)
+@@ -151,13 +151,13 @@ func TestServiceManager_Basic(t *testing.T) {
+ 		req.sendTxs(txs1[:5])
+ 
+ 		time.Sleep(delayForConfirm)
+-		toTC<-"on_send_5"
++		toTC <- "on_send_5"
+ 
+ 		assert.Equal(t, "send_remain", <-toBC)
+ 		req.sendTxs(txs1[5:])
+ 
+ 		time.Sleep(delayForConfirm)
+-		toTC<-"on_send_10"
++		toTC <- "on_send_10"
+ 
+ 		assert.Equal(t, "interrupt", <-toBC)
+ 		req.interrupt()
+@@ -188,7 +188,7 @@ func TestServiceManager_Basic(t *testing.T) {
+ 	// check result & transactions
+ 	assert.Equal(t, vl.Hash(), tr1.NextValidators().Hash())
+ 	tls1 := tr2.NormalTransactions()
+-	for itr, idx := tls1.Iterator(), 0 ; itr.Has() ; idx, _ = idx+1, itr.Next() {
++	for itr, idx := tls1.Iterator(), 0; itr.Has(); idx, _ = idx+1, itr.Next() {
+ 		tx, i, err := itr.Get()
+ 		assert.NoError(t, err)
+ 		assert.Equal(t, idx, i)
+@@ -225,7 +225,7 @@ func TestServiceManager_Basic(t *testing.T) {
+ 	// check result & transactions
+ 	assert.Equal(t, vl.Hash(), tr1.NextValidators().Hash())
+ 	tls2 := tr3.NormalTransactions()
+-	for itr, idx := tls2.Iterator(), 0 ; itr.Has() ; idx, _ = idx+1, itr.Next() {
++	for itr, idx := tls2.Iterator(), 0; itr.Has(); idx, _ = idx+1, itr.Next() {
+ 		tx, i, err := itr.Get()
+ 		assert.NoError(t, err)
+ 		assert.Equal(t, idx, i)
+@@ -335,7 +335,7 @@ func TestServiceManager_Basic(t *testing.T) {
+ 		assert.Equal(t, vl.Hash(), trc.NextValidators().Hash())
+ 		tls3 := trc.NormalTransactions()
+ 		txsum := 0
+-		for itr := tls3.Iterator() ; itr.Has() ; txo, _ = txo+1, itr.Next() {
++		for itr := tls3.Iterator(); itr.Has(); txo, _ = txo+1, itr.Next() {
+ 			tx, _, err := itr.Get()
+ 			assert.NoError(t, err)
+ 			assert.Equal(t, txs2[txo], transaction.Unwrap(tx))
+@@ -349,7 +349,7 @@ func TestServiceManager_Basic(t *testing.T) {
+ 		trp = trc
+ 	}
+ 
+-	for i := 0 ; i<2 ; i++ {
++	for i := 0; i < 2; i++ {
+ 		assert.False(t, sm.Finished())
+ 
+ 		height += 1
+@@ -375,7 +375,7 @@ func TestServiceManager_Basic(t *testing.T) {
+ 	assert.True(t, sm.Finished())
+ 
+ 	select {
+-	case err := <- trb:
++	case err := <-trb:
+ 		assert.Failf(t, "Got error", "err=%+v", err)
+ 	default:
+ 		// do nothing
+@@ -404,4 +404,11 @@ func TestServiceManager_Basic(t *testing.T) {
+ 	assert.True(t, bc.votes == ps.Votes)
+ 
+ 	sm.Term()
+-}
+\ No newline at end of file
++}
++
++func FuzzBlockTxBytes(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		checkBlockTxBytes(input_data)
++		parseBlockTxBytes(input_data)
++	})
++}
+diff --git a/javaee/exec/build.gradle b/javaee/exec/build.gradle
+index 97cd695..889098a 100644
+--- a/javaee/exec/build.gradle
++++ b/javaee/exec/build.gradle
+@@ -6,7 +6,7 @@ dependencies {
+     implementation 'org.msgpack:msgpack-core:0.8.17'
+     implementation 'org.slf4j:slf4j-api:1.7.26'
+ 
+-    testCompile(
++    testImplementation(
+         'org.junit.jupiter:junit-jupiter-api:5.9.0',
+         'org.ow2.asm:asm:7.0',
+         'org.ow2.asm:asm-util:7.0'
+diff --git a/javaee/gradle/wrapper/gradle-wrapper.properties b/javaee/gradle/wrapper/gradle-wrapper.properties
+index 3fc1231..2dec0cb 100644
+--- a/javaee/gradle/wrapper/gradle-wrapper.properties
++++ b/javaee/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,5 @@
+-#Fri Aug 30 14:06:32 KST 2019
+-distributionUrl=https\://services.gradle.org/distributions/gradle-5.5.1-all.zip
++#Mon Aug 21 10:11:22 IST 2023
++distributionUrl=https\://services.gradle.org/distributions/gradle-7.4.2-bin.zip
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+ zipStorePath=wrapper/dists
+diff --git a/javaee/rt/build.gradle b/javaee/rt/build.gradle
+index 31d7f56..13df129 100644
+--- a/javaee/rt/build.gradle
++++ b/javaee/rt/build.gradle
+@@ -12,16 +12,14 @@ dependencies {
+     implementation 'org.ow2.asm:asm-util:7.0'
+     implementation 'foundation.icon:blst-java:0.3.1'
+ 
++    implementation group: 'com.code-intelligence', name: 'jazzer-junit', version: '0.19.0'
++
+     testImplementation(
+         'junit:junit:4.13.2',
+         'org.junit.jupiter:junit-jupiter-api:5.9.0'
+     )
+-    testRuntime(
++    testImplementation(
+         'org.junit.jupiter:junit-jupiter-engine:5.9.0',
+         'org.junit.vintage:junit-vintage-engine:5.9.0'
+     )
+ }
+-
+-test {
+-    useJUnitPlatform()
+-}
+diff --git a/javaee/rt/test/java/org/aion/avm/core/persistence/SerializerTest.java b/javaee/rt/test/java/org/aion/avm/core/persistence/SerializerTest.java
+index 926119b..4168c71 100644
+--- a/javaee/rt/test/java/org/aion/avm/core/persistence/SerializerTest.java
++++ b/javaee/rt/test/java/org/aion/avm/core/persistence/SerializerTest.java
+@@ -12,6 +12,7 @@ import org.junit.Assert;
+ import java.lang.reflect.Field;
+ import java.lang.reflect.Method;
+ import java.nio.ByteBuffer;
++import com.code_intelligence.jazzer.junit.FuzzTest;
+ 
+ public class SerializerTest {
+     // NOTE:  Output is ONLY produced if REPORT is set to true.
+@@ -462,4 +463,33 @@ public class SerializerTest {
+             System.out.println(output);
+         }
+     }
++
++    @FuzzTest
++    public void Fuzzdeserialize(byte[] input) {
++
++        if (input.length < 10 || input.length > 2048) {
++            return;
++        }
++
++        try {
++            setupClass();
++            setup();
++        } catch (Exception e) {
++            // TODO: handle exception
++            return;
++        }
++
++        TestGlobalResolver resolver = new TestGlobalResolver();
++        TestNameMapper classNameMapper = new TestNameMapper();
++        Class<?>[] sortedRoots = new Class<?>[]{TargetRoot.class, TargetLeaf.class, TargetArray.class};
++
++        ByteBuffer buffer = ByteBuffer.wrap(input);
++
++        try {
++            Deserializer.deserializeObject(buffer, resolver, this.cache, classNameMapper);
++            Deserializer.deserializeEntireGraphAndNextHashCode(buffer, null, resolver, this.cache, classNameMapper, sortedRoots, EmptyConstantClass.class);
++        } catch (Exception e) {
++            // TODO: handle exception
++        }
++    }
+ }
+diff --git a/network/authenticator_test.go b/network/authenticator_test.go
+index 7235263..e12fd4e 100644
+--- a/network/authenticator_test.go
++++ b/network/authenticator_test.go
+@@ -434,3 +434,19 @@ func Test_Authenticator_Packet(t *testing.T) {
+ 	a.onPacket(pkt, p)
+ 	assert.True(t, p.HasCloseError(ErrNotRegisteredProtocol))
+ }
++
++func FuzzAuthenticator(f *testing.F) {
++	w := walletFromGeneratedPrivateKey()
++	a := newAuthenticator(w, testLogger())
++
++	p := w.PublicKey()
++
++	f.Fuzz(func(t *testing.T, input_data_0 []byte, input_data_1 []byte, input_data_2 []byte) {
++
++		s := a.Signature(input_data_0)
++
++		_, _ = a.VerifySignature(p, s, input_data_0)
++		_, _ = a.VerifySignature(input_data_1, s, input_data_0)
++		_, _ = a.VerifySignature(p, input_data_2, input_data_0)
++	})
++}
+diff --git a/network/stream_test.go b/network/stream_test.go
+index f468033..02e1bf3 100644
+--- a/network/stream_test.go
++++ b/network/stream_test.go
+@@ -595,3 +595,10 @@ func TestStream_Reordering(t *testing.T) {
+ 		assertNoEvent(t, s.r.ch)
+ 	})
+ }
++
++func FuzzOnReceive(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		sm := &streamMessage{}
++		_, _ = codec.UnmarshalFromBytes(input_data, sm)
++	})
++}
+diff --git a/service/scoreapi/info_test.go b/service/scoreapi/info_test.go
+index 10df454..eb7c3ec 100644
+--- a/service/scoreapi/info_test.go
++++ b/service/scoreapi/info_test.go
+@@ -151,7 +151,7 @@ func TestInfo_Codec(t *testing.T) {
+ 		assert.Nil(t, info)
+ 		assert.True(t, info.Equal(info1))
+ 	})
+-	t.Run( "Simple", func(t *testing.T) {
++	t.Run("Simple", func(t *testing.T) {
+ 		info := NewInfo(testMethods)
+ 		bs, err := codec.BC.MarshalToBytes(info)
+ 		assert.NoError(t, err)
+@@ -174,3 +174,15 @@ func TestInfo_Codec(t *testing.T) {
+ 		assert.Error(t, err)
+ 	})
+ }
++
++func TestInfoBug(t *testing.T) {
++	var info1 *Info
++	codec.BC.UnmarshalFromBytes([]byte("\xce\xce00\xf8\x00\xd8\xf8\x00\xe8\xf8\x00\xe8\xf8\x00"), &info1)
++}
++
++func FuzzInfo(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		var info1 *Info
++		codec.BC.UnmarshalFromBytes(input_data, &info1)
++	})
++}
+diff --git a/service/scoreapi/method.go b/service/scoreapi/method.go
+index fdf2947..8889f7d 100644
+--- a/service/scoreapi/method.go
++++ b/service/scoreapi/method.go
+@@ -94,12 +94,12 @@ func (t TypeTag) String() string {
+ // of ICON.
+ //
+ // def str_to_int(value: str) -> int:
+-//    if isinstance(value, int):
+-//        return value
+ //
+-//    base = 16 if is_hex(value) else 10
+-//    return int(value, base)
++//	if isinstance(value, int):
++//	    return value
+ //
++//	base = 16 if is_hex(value) else 10
++//	return int(value, base)
+ func ParseHexIntParam(bs []byte) (*common.HexInt, error) {
+ 	var iValue int64
+ 	if err := json.Unmarshal(bs, &iValue); err == nil {
+diff --git a/service/scoreapi/method_test.go b/service/scoreapi/method_test.go
+index af97718..6c8ba5e 100644
+--- a/service/scoreapi/method_test.go
++++ b/service/scoreapi/method_test.go
+@@ -1336,45 +1336,45 @@ func TestDataType_ConvertBytesToJSO(t *testing.T) {
+ 		want    string
+ 	}
+ 	var cases = []struct {
+-		name     string
+-		dt       DataType
+-		jsons    []bytesToJSO
++		name  string
++		dt    DataType
++		jsons []bytesToJSO
+ 	}{
+ 		{
+ 			"Integer",
+ 			Integer,
+ 			[]bytesToJSO{
+-				{ []byte{ 0x01 }, false, `"0x1"` },
+-				{ []byte{ 0xff }, false, `"-0x1"` },
+-				{ nil, false, `null` },
++				{[]byte{0x01}, false, `"0x1"`},
++				{[]byte{0xff}, false, `"-0x1"`},
++				{nil, false, `null`},
+ 			},
+ 		},
+ 		{
+ 			"ListOfString",
+-			ListTypeOf(1,String),
++			ListTypeOf(1, String),
+ 			[]bytesToJSO{
+-				{ []byte{ 0x01 }, true, `` },
+-				{ []byte{}, true, `` },
+-				{ nil, false, `null` },
++				{[]byte{0x01}, true, ``},
++				{[]byte{}, true, ``},
++				{nil, false, `null`},
+ 			},
+ 		},
+ 		{
+ 			"Struct",
+ 			Struct,
+ 			[]bytesToJSO{
+-				{ []byte{ 0x01 }, true, `` },
+-				{ nil, false, `null` },
++				{[]byte{0x01}, true, ``},
++				{nil, false, `null`},
+ 			},
+ 		},
+ 		{
+ 			"Address",
+ 			Address,
+ 			[]bytesToJSO{
+-				{ []byte("\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+-					false, `"cx0000000000000000000000000000000000000000"` },
+-				{ []byte("\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+-					true, `` },
+-				{ nil, false, `null` },
++				{[]byte("\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
++					false, `"cx0000000000000000000000000000000000000000"`},
++				{[]byte("\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
++					true, ``},
++				{nil, false, `null`},
+ 			},
+ 		},
+ 	}
+@@ -1394,3 +1394,26 @@ func TestDataType_ConvertBytesToJSO(t *testing.T) {
+ 		})
+ 	}
+ }
++
++func FuzzDataTypeOf(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data string) {
++		_ = DataTypeOf(input_data)
++	})
++}
++
++func FuzzConvertBytesToTypedObj(f *testing.F) {
++	f.Add([]byte("\x23\x34"))
++	f.Add([]byte("\x01\x2a\xa9\xb2\x8a\x65\x7e\x31\x21\xb7\x5d\x3d\x4f\xe6\x5e\x56\x93\x98\x64\x5d\x56"))
++
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		var dt DataType
++		_, _ = dt.ConvertBytesToTypedObj(input_data)
++	})
++}
++
++func FuzzValidateEvent(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		var dt DataType
++		_ = dt.ValidateEvent(input_data)
++	})
++}
+diff --git a/service/state/validator_test.go b/service/state/validator_test.go
+index 589bccd..154f375 100644
+--- a/service/state/validator_test.go
++++ b/service/state/validator_test.go
+@@ -148,3 +148,10 @@ func TestValidatorSerializeWithAddr(t *testing.T) {
+ 		return
+ 	}
+ }
++
++func FuzzValidator(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		var v2 *validator
++		codec.BC.UnmarshalFromBytes(input_data, &v2)
++	})
++}
+diff --git a/service/transaction/genesis_v3_test.go b/service/transaction/genesis_v3_test.go
+index 6e0dcd3..cdab776 100644
+--- a/service/transaction/genesis_v3_test.go
++++ b/service/transaction/genesis_v3_test.go
+@@ -84,3 +84,21 @@ func TestGenesisV3_ICONMainNet(t *testing.T) {
+ 	assert.Equal(t, ICONMainNetCID, gtx.CID())
+ 	assert.Equal(t, ICONMainNetCID, gtx.NID())
+ }
++
++func FuzzParseV3Genesis(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		parseV3Genesis(input_data, false)
++	})
++}
++
++func FuzzParseV3Binary(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		parseV3Binary(input_data)
++	})
++}
++
++func FuzzNewGenesisTransaction(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		NewGenesisTransaction(input_data)
++	})
++}
+diff --git a/service/transitionresult_test.go b/service/transitionresult_test.go
+index 97a38ff..a5adc40 100644
+--- a/service/transitionresult_test.go
++++ b/service/transitionresult_test.go
+@@ -73,4 +73,10 @@ func Test_NewBTPContext(t *testing.T) {
+ 	ctx, err := NewBTPContext(dbase, nil)
+ 	assert.NoError(t, err)
+ 	assert.NotNil(t, ctx)
+-}
+\ No newline at end of file
++}
++
++func FuzzTransitionResult(f *testing.F) {
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		_, _ = newTransitionResultFromBytes(input_data)
++	})
++}
+diff --git a/service/txresult/logsbloom_test.go b/service/txresult/logsbloom_test.go
+index 3f36750..df900fb 100644
+--- a/service/txresult/logsbloom_test.go
++++ b/service/txresult/logsbloom_test.go
+@@ -138,3 +138,28 @@ func BenchmarkLogsBloom_Compressed(b *testing.B) {
+ 		lb2.SetCompressedBytes(lb1.CompressedBytes())
+ 	})
+ }
++
++func FuzzCompressed(f *testing.F) {
++	lb1 := NewLogsBloom(nil)
++	lb1.AddLog(
++		common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"),
++		[][]byte{[]byte("TestFunc(int)"), []byte{0x12, 0x23}},
++	)
++	lb1.AddLog(
++		common.MustNewAddressFromString("cx0000000000000000000000000000000000000000"),
++		[][]byte{[]byte("TestFunc2(int)"), []byte{0x13, 0x45}},
++	)
++
++	f.Add(lb1.CompressedBytes())
++
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++
++		NewLogsBloomFromCompressed(input_data)
++
++		if len(input_data) > 512 {
++			return
++		}
++		lb2 := NewLogsBloom(nil)
++		_ = lb2.SetCompressedBytes(input_data)
++	})
++}
+diff --git a/service/txresult/receipt_test.go b/service/txresult/receipt_test.go
+index a85843f..f3f21e8 100644
+--- a/service/txresult/receipt_test.go
++++ b/service/txresult/receipt_test.go
+@@ -254,3 +254,19 @@ func TestDecomposeEventSignature(t *testing.T) {
+ 		})
+ 	}
+ }
++
++func TestReceiptBug(t *testing.T) {
++	//var rec receipt
++	//codec.UnmarshalFromBytes([]byte("\xe70\xf8\x000000\xf8\x00\xf8\x0000"), &rec)
++	r3 := new(receipt)
++	_ = r3.Reset(db.NewMapDB(), []byte("\xe70\xf8\x000000\xf8\x00\xf8\x0000"))
++}
++
++func FuzzReceipt(f *testing.F) {
++	r3 := new(receipt)
++	dbase := db.NewMapDB()
++
++	f.Fuzz(func(t *testing.T, input_data []byte) {
++		r3.Reset(dbase, input_data)
++	})
++}
